@@ -46,11 +46,11 @@ metaFood3<-cbind(metafood2, salesRank2)
 я понимаю, что это задача для дибилчиков, но я таковым и являюсь )
 # убрал NA
 ```{r}
-metaFood4<-na.omit(metaFood3)
+metaFood3<-na.omit(metaFood3)
 ```
 # Объединение
 ```{r message = F, warning=FALSE}
-all_table<-inner_join (reviewFood, metaFood4, by='asin')
+all<-inner_join (reviewFood, metaFood3, by='asin')
 ```
 # Оценка полезности отзывов
 ```{r}
@@ -60,14 +60,14 @@ reviewFood$helpful <- gsub("\\)", '', reviewFood$helpful)
 ```
 
 ```{r message = F, warning=FALSE}
-count=count(group_by (all_table,asin))
-sapply(all_table, class)
-as.list(all_table, related)
-all_table=select(all_table,-related)
-all_table<-inner_join(all_table, count, by='asin')
+count=count(group_by (all,asin))
+sapply(all, class)
+as.list(all, related)
+all=select(all,-related)
+all<-inner_join(all, count, by='asin')
 ```
 
-Оставляем 3 колонки 
+# Оставляем только ревьюера, asin и общую оценку
 ```{r}
 library(cluster)
 library(reshape)
@@ -79,7 +79,7 @@ library(GGally)
 install.packages("tidyverse")
 library(tidyverse)
 
-food <- all_table %>% 
+food <- all %>% 
   group_by(reviewerName,asin,overall) %>%
   ungroup() %>%
   select(reviewerName,asin,overall)
@@ -101,17 +101,17 @@ food <- food %>%
   data2 <- dcast(food2, reviewerName ~ asin, value.var = "overall")
   data2 <- data2 %>% remove_rownames %>% column_to_rownames(var="reviewerName")
 ```
-# Рейтинг
+# Рекомендации по рейтингу + similarity
 ```{r}
 library(recommenderlab)
 R<-as.matrix(data2)
 r <- as(R, "realRatingMatrix")
 
-similarity_users10 <- similarity(r[1:10, ], method = "cosine", which = "users")
-as.matrix(similarity_users10)
+similarityusers10 <- similarity(r[1:10, ], method = "cosine", which = "users")
+as.matrix(similarityusers10)
 
 
-image(as.matrix(similarity_users10), main = "User similarity")
+image(as.matrix(similarityusers10), main = "Users similarity")
 
 set.seed(42)
 test_ind <- sample(1:nrow(r), size = nrow(r)*0.2)
