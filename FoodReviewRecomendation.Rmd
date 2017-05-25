@@ -1,0 +1,135 @@
+---
+title: "Food reccomendations"
+author: "Yulia Orlova"
+date: "23 03 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(jsonlite)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+metaFood = readLines("~/shared/minor3_2016/data/amazon/meta_Grocery_and_Gourmet_Food_fix.json") %>% 
+str_c(collapse = ",") %>% 
+(function(str) str_c("[", str, "]")) %>% 
+fromJSON(simplifyDataFrame = T)
+```
+
+```{r}
+reviewFood = readLines("~/shared/minor3_2016/data/amazon/reviews_Grocery_and_Gourmet_Food_5.json.gz") %>% 
+str_c(collapse = ",") %>% 
+(function(str) str_c("[", str, "]")) %>% 
+fromJSON(simplifyDataFrame = T)
+```
+
+# вытащить sales.Rank в отдельный дф
+```{r}
+salesRank = metaFood[, "salesRank"]
+metafood2 = metaFood[, !(names(metaFood) == "salesRank")]
+```
+# оставим в sales.Rank только Еду
+```{r}
+salesRank2 = select(salesRank,contains("Grocery & Gourmet Food"))
+```
+# объединим ДФ
+```{r}
+metaFood3<-cbind(metafood2, salesRank2)
+```
+я понимаю, что это задача для дибилчиков, но я таковым и являюсь )
+# убрал NA
+```{r}
+metaFood4<-na.omit(metaFood3)
+```
+# Объединение
+```{r message = F, warning=FALSE}
+all_table<-inner_join (reviewFood, metaFood4, by='asin')
+```
+# Оценка полезности отзывов
+```{r}
+reviewFood$helpful <- gsub("c\\(", '', reviewFood$helpful)
+reviewFood$helpful <- gsub(":", ', ', reviewFood$helpful) 
+reviewFood$helpful <- gsub("\\)", '', reviewFood$helpful) 
+```
+
+```{r message = F, warning=FALSE}
+count=count(group_by (all_table,asin))
+sapply(all_table, class)
+as.list(all_table, related)
+all_table=select(all_table,-related)
+all_table<-inner_join(all_table, count, by='asin')
+```
+
+Оставляем 3 колонки 
+```{r}
+library(cluster)
+library(reshape)
+library(Matrix)
+library(reshape2)
+library(reshape)
+library(tidyr)
+library(GGally)
+install.packages("tidyverse")
+library(tidyverse)
+
+food <- all_table %>% 
+  group_by(reviewerName,asin,overall) %>%
+  ungroup() %>%
+  select(reviewerName,asin,overall)
+food <- food %>% 
+ group_by(asin) %>% 
+ filter(n()>100)
+ food <- filter(food,  !is.na(reviewerName))
+  food <- food %>% 
+ group_by(reviewerName) %>% 
+ filter(n()>2)
+  
+  food2<- food[!duplicated(food), ]
+ food2 <- food2[!(food2$reviewerName %in% c("A Customer","Amazon Customer")),]
+ food2 <- food2[!duplicated(food2[c("reviewerName","asin")]),]
+ 
+  food2 <- within(food2, {
+  overall <- as.numeric(as.character(overall))
+})
+  data2 <- dcast(food2, reviewerName ~ asin, value.var = "overall")
+  data2 <- data2 %>% remove_rownames %>% column_to_rownames(var="reviewerName")
+```
+# Рейтинг
+```{r}
+library(recommenderlab)
+R<-as.matrix(data2)
+r <- as(R, "realRatingMatrix")
+
+similarity_users10 <- similarity(r[1:10, ], method = "cosine", which = "users")
+as.matrix(similarity_users10)
+
+
+image(as.matrix(similarity_users10), main = "User similarity")
+
+set.seed(42)
+test_ind <- sample(1:nrow(r), size = nrow(r)*0.2)
+recfood_train <- r[-test_ind, ]
+recfood_test <- r[test_ind, ]
+
+rec_model <- Recommender(data = recfood_train, method = "IBCF",
+parameter = list(k = 30))
+rec_model
+
+rec_predicted <- predict(object = rec_model, newdata = recfood_test, n = 5)
+rec_predicted
+
+str(rec_predicted)
+
+rec_user1 <- rec_predicted@items[[1]]
+rec_user1
+
+food_user1 <- rec_predicted@itemLabels[rec_user1]
+food_user1
+```
