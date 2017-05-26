@@ -1,0 +1,11 @@
+name: projectfilter
+title: ProjectFilter
+account: yuporlova
+server: shinyapps.io
+appId: 184062
+bundleId: 842324
+url: https://yuporlova.shinyapps.io/projectfilter/
+when: 1495831329.30966
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: FoodReviewRecomendation.Rmd|Intelligence analysis.Rmd

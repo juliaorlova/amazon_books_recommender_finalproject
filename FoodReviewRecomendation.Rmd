@@ -133,3 +133,11 @@ rec_user1
 food_user1 <- rec_predicted@itemLabels[rec_user1]
 food_user1
 ```
+
+```{r}
+rec_matrix <- sapply(rec_predicted@items, function(x){
+colnames(r)[x]
+})
+dim(rec_matrix)
+str(rec_matrix)
+```
